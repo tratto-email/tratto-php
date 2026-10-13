@@ -8,6 +8,7 @@ use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Http\Transport;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Webhooks;
 
 final class Client
 {
@@ -16,6 +17,7 @@ final class Client
     public const DEFAULT_TIMEOUT = 30.0;
 
     public readonly Emails $emails;
+    public readonly Webhooks $webhooks;
 
     /**
      * @param array{baseUrl?: string, timeout?: int|float, transport?: Transport} $options
@@ -49,5 +51,6 @@ final class Client
 
         $http = new HttpClient($key, rtrim($baseUrl, '/'), (float) $timeout, $transport);
         $this->emails = new Emails($http);
+        $this->webhooks = new Webhooks($http);
     }
 }

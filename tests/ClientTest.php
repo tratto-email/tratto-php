@@ -11,6 +11,7 @@ use Tratto\Client;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Webhooks;
 use Tratto\Tests\Fake\FakeTransport;
 use Tratto\TrattoException;
 
@@ -169,7 +170,7 @@ final class ClientTest extends TestCase
             $headerException = $e;
         }
 
-        foreach (['client' => $client, 'resource' => $client->emails, 'exception' => $exception, 'networkException' => $networkException, 'headerException' => $headerException] as $label => $subject) {
+        foreach (['client' => $client, 'resource' => $client->emails, 'webhooks' => $client->webhooks, 'exception' => $exception, 'networkException' => $networkException, 'headerException' => $headerException] as $label => $subject) {
             ob_start();
             var_dump($subject);
             $dumps = [
@@ -185,7 +186,7 @@ final class ClientTest extends TestCase
                 self::assertStringNotContainsString(self::KEY, $dump, "$how($label) leaks the key");
                 self::assertStringNotContainsString('SuperSecret', $dump, "$how($label) leaks part of the key");
             }
-            if ($subject instanceof Client || $subject instanceof Emails) {
+            if ($subject instanceof Client || $subject instanceof Emails || $subject instanceof Webhooks) {
                 foreach (['print_r', 'var_export', 'var_dump'] as $how) {
                     self::assertStringContainsString('api-staging.example.test', $dumps[$how], "$how($label) positive control");
                 }
@@ -201,8 +202,12 @@ final class ClientTest extends TestCase
     }
 
     #[Test]
-    public function exposesTheResource(): void
+    public function exposesTheResourcesSharingOneKeyHolder(): void
     {
-        self::assertInstanceOf(Emails::class, (new Client('k', ['transport' => new FakeTransport()]))->emails);
+        $client = new Client('k', ['transport' => new FakeTransport()]);
+        self::assertInstanceOf(Emails::class, $client->emails);
+        self::assertInstanceOf(Webhooks::class, $client->webhooks);
+        $http = static fn(object $resource): mixed => (new \ReflectionProperty($resource, 'http'))->getValue($resource);
+        self::assertSame($http($client->emails), $http($client->webhooks));
     }
 }
