@@ -10,14 +10,17 @@ use PHPUnit\Framework\TestCase;
 use Tratto\Client;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
+use Tratto\Resources\Analytics;
 use Tratto\Resources\Audiences;
 use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
 use Tratto\Resources\Domains;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Flows;
 use Tratto\Resources\Resource;
 use Tratto\Resources\Templates;
 use Tratto\Resources\Webhooks;
+use Tratto\Resources\Workspace;
 use Tratto\Tests\Fake\FakeTransport;
 use Tratto\TrattoException;
 
@@ -219,6 +222,9 @@ final class ClientTest extends TestCase
             'templates' => Templates::class,
             'webhooks' => Webhooks::class,
             'domains' => Domains::class,
+            'analytics' => Analytics::class,
+            'flows' => Flows::class,
+            'workspace' => Workspace::class,
         ];
         $actual = [];
         foreach ((new \ReflectionClass($client))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {

@@ -45,6 +45,11 @@ final class IdEncodingTest extends ResourceTestCase
         yield 'templates.listVersions' => [static fn(Client $c, string $id) => $c->templates->listVersions($id), 'GET', '/v1/templates/{id}/versions'];
         // listed by hand: the id is not the only path parameter (the version follows it)
         yield 'templates.getVersion' => [static fn(Client $c, string $id) => $c->templates->getVersion($id, 3), 'GET', '/v1/templates/{id}/versions/3'];
+        yield 'flows.get' => [static fn(Client $c, string $id) => $c->flows->get($id), 'GET', '/v1/flows/{id}'];
+        yield 'flows.update' => [static fn(Client $c, string $id) => $c->flows->update($id, ['name' => 'N']), 'PATCH', '/v1/flows/{id}'];
+        yield 'flows.delete' => [static fn(Client $c, string $id) => $c->flows->delete($id), 'DELETE', '/v1/flows/{id}'];
+        yield 'flows.activate' => [static fn(Client $c, string $id) => $c->flows->activate($id), 'POST', '/v1/flows/{id}/activate'];
+        yield 'flows.deactivate' => [static fn(Client $c, string $id) => $c->flows->deactivate($id), 'POST', '/v1/flows/{id}/deactivate'];
         yield 'templates.testSend' => [static fn(Client $c, string $id) => $c->templates->testSend($id, 'a@b.it'), 'POST', '/v1/templates/{id}/test-send'];
     }
 
