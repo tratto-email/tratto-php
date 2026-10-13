@@ -4,4 +4,12 @@ parameters:
     paths:
         - src
         - tests
+        - examples
+        - scripts
+    excludePaths:
+        analyse:
+            - examples/stubs
+    # Laravel and Symfony are not installed: their symbols used by the examples are declared here, read only by PHPStan
+    scanFiles:
+        - examples/stubs/frameworks.php
     treatPhpDocTypesAsCertain: false

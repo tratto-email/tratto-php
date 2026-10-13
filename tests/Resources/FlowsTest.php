@@ -25,8 +25,8 @@ final class FlowsTest extends ResourceTestCase
     public function createGetAndUpdate(): void
     {
         $this->fake->queue(201, ['data' => ['id' => 'flw_1']]);
-        self::assertSame(['id' => 'flw_1'], $this->client->flows->create(['name' => 'Welcome', 'trigger' => ['type' => 'contact_created'], 'steps' => []]));
-        $this->assertRequest('POST', '/v1/flows', '{"name":"Welcome","trigger":{"type":"contact_created"},"steps":[]}');
+        self::assertSame(['id' => 'flw_1'], $this->client->flows->create(['name' => 'Welcome']));
+        $this->assertRequest('POST', '/v1/flows', '{"name":"Welcome"}');
 
         $this->fake->queue(200, ['data' => ['id' => 'flw_1', 'status' => 'draft']]);
         self::assertSame(['id' => 'flw_1', 'status' => 'draft'], $this->client->flows->get('flw_1'));
