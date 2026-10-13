@@ -7,13 +7,16 @@ namespace Tratto;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Http\Transport;
+use Tratto\Resources\Analytics;
 use Tratto\Resources\Audiences;
 use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
 use Tratto\Resources\Domains;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Flows;
 use Tratto\Resources\Templates;
 use Tratto\Resources\Webhooks;
+use Tratto\Resources\Workspace;
 
 final class Client
 {
@@ -28,6 +31,9 @@ final class Client
     public readonly Templates $templates;
     public readonly Webhooks $webhooks;
     public readonly Domains $domains;
+    public readonly Analytics $analytics;
+    public readonly Flows $flows;
+    public readonly Workspace $workspace;
 
     /**
      * @param array{baseUrl?: string, timeout?: int|float, transport?: Transport} $options
@@ -67,5 +73,8 @@ final class Client
         $this->domains = new Domains($http);
         $this->campaigns = new Campaigns($http);
         $this->templates = new Templates($http);
+        $this->analytics = new Analytics($http);
+        $this->flows = new Flows($http);
+        $this->workspace = new Workspace($http);
     }
 }
