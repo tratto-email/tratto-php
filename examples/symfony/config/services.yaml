@@ -1,0 +1,6 @@
+# Symfony: Tratto\Client as a service, with the key from the environment (.env.local or the real environment).
+# Merge into config/services.yaml, then inject Tratto\Client by type (see WelcomeMailer.php).
+services:
+    Tratto\Client:
+        arguments:
+            $apiKey: '%env(TRATTO_API_KEY)%'
