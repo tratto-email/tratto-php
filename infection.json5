@@ -1,0 +1,9 @@
+{
+    // Local only, not in CI: composer -d tools/infection install, then
+    // phpdbg -qrr tools/infection/vendor/bin/infection (or with pcov/xdebug: tools/infection/vendor/bin/infection)
+    "$schema": "tools/infection/vendor/infection/infection/resources/schema.json",
+    "source": {"directories": ["src"]},
+    "phpUnit": {"customPath": "vendor/bin/phpunit"},
+    "logs": {"text": "infection.log"},
+    "mutators": {"@default": true}
+}

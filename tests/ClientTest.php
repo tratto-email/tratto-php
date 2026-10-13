@@ -1,0 +1,160 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tratto\Tests;
+
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Tratto\Client;
+use Tratto\Http\CurlTransport;
+use Tratto\Http\HttpClient;
+use Tratto\Resources\Emails;
+use Tratto\Tests\Fake\FakeTransport;
+use Tratto\TrattoException;
+
+final class ClientTest extends TestCase
+{
+    private const KEY = 'tr_live_SuperSecretKey0123456789';
+
+    #[Test]
+    public function rejectsAnEmptyKey(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('apiKey is required');
+        new Client('');
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, string}> */
+    public static function badOptions(): iterable
+    {
+        yield 'unknown option (no curl passthrough)' => [['curlOptions' => [CURLOPT_SSL_VERIFYPEER => false]], 'Unknown option(s): curlOptions'];
+        yield 'baseUrl not a string' => [['baseUrl' => 42], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl without scheme' => [['baseUrl' => 'api.tratto.email'], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with another scheme' => [['baseUrl' => 'file:///etc/passwd'], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with scheme not at start' => [['baseUrl' => 'x https://a'], 'baseUrl must be an http(s) URL'];
+        yield 'timeout zero' => [['timeout' => 0], 'timeout must be a positive number of seconds'];
+        yield 'timeout negative' => [['timeout' => -1.5], 'timeout must be a positive number of seconds'];
+        yield 'timeout string' => [['timeout' => '30'], 'timeout must be a positive number of seconds'];
+        yield 'transport wrong type' => [['transport' => new \stdClass()], 'transport must implement Tratto\Http\Transport'];
+    }
+
+    /** @param array<string, mixed> $options */
+    #[Test]
+    #[DataProvider('badOptions')]
+    public function rejectsBadOptions(array $options, string $message): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+        new Client('k', $options);
+    }
+
+    #[Test]
+    public function defaultsToProductionCurlAndThirtySeconds(): void
+    {
+        $client = new Client('k');
+        $http = (new \ReflectionProperty($client->emails, 'http'))->getValue($client->emails);
+        self::assertInstanceOf(HttpClient::class, $http);
+        self::assertSame('https://api.tratto.email', $http->baseUrl);
+        self::assertSame(30.0, $http->timeout);
+        self::assertInstanceOf(CurlTransport::class, (new \ReflectionProperty($http, 'transport'))->getValue($http));
+    }
+
+    #[Test]
+    public function usesBaseUrlWithoutTrailingSlashAndTimeout(): void
+    {
+        $fake = new FakeTransport();
+        $client = new Client('k', ['baseUrl' => 'http://localhost:8080/', 'timeout' => 5, 'transport' => $fake]);
+        $client->emails->get('e1');
+
+        self::assertSame('http://localhost:8080/v1/emails/e1', $fake->last()['url']);
+        self::assertSame(5.0, $fake->last()['timeout']);
+    }
+
+    #[Test]
+    public function sendsAuthUserAgentAndAccept(): void
+    {
+        $fake = new FakeTransport();
+        (new Client(self::KEY, ['transport' => $fake]))->emails->get('e1');
+
+        self::assertSame([
+            'Authorization' => 'Bearer ' . self::KEY,
+            'User-Agent' => 'tratto-php/' . Client::VERSION . ' php/' . PHP_VERSION,
+            'Accept' => 'application/json',
+        ], $fake->last()['headers']);
+        self::assertNull($fake->last()['body']);
+    }
+
+    #[Test]
+    public function versionIsSemver(): void
+    {
+        self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', Client::VERSION);
+    }
+
+    /**
+     * C3: the key must not appear in any dump of the client, of a resource, or of an exception
+     * raised by a request. Positive control: the same dumps must contain the base URL.
+     */
+    #[Test]
+    public function neverLeaksTheKeyInDumps(): void
+    {
+        $fake = (new FakeTransport())->queue(401, ['error' => ['message' => 'Invalid API key', 'code' => 'unauthorized']]);
+        $client = new Client(self::KEY, ['baseUrl' => 'https://api-staging.example.test', 'transport' => $fake]);
+
+        try {
+            $client->emails->get('e1');
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            $exception = $e;
+        }
+        // the key was really sent (the redaction is not an empty client); then forget what the fake recorded
+        self::assertSame('Bearer ' . self::KEY, $fake->last()['headers']['Authorization']);
+        $fake->requests = [];
+
+        // a network error raised inside CurlTransport, whose own trace holds the Authorization header
+        try {
+            (new Client(self::KEY, ['baseUrl' => 'http://127.0.0.1:1', 'timeout' => 2]))->emails->get('e1');
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame('connection_error', $e->errorCode);
+            $networkException = $e;
+        }
+
+        foreach (['client' => $client, 'resource' => $client->emails, 'exception' => $exception, 'networkException' => $networkException] as $label => $subject) {
+            ob_start();
+            var_dump($subject);
+            $dumps = [
+                'print_r' => print_r($subject, true),
+                'var_export' => var_export($subject, true),
+                'var_dump' => (string) ob_get_clean(),
+                'json_encode' => json_encode($subject, JSON_THROW_ON_ERROR),
+            ];
+            if ($subject instanceof \Throwable) {
+                $dumps['__toString'] = (string) $subject;
+            }
+            foreach ($dumps as $how => $dump) {
+                self::assertStringNotContainsString(self::KEY, $dump, "$how($label) leaks the key");
+                self::assertStringNotContainsString('SuperSecret', $dump, "$how($label) leaks part of the key");
+            }
+            if ($subject instanceof Client || $subject instanceof Emails) {
+                foreach (['print_r', 'var_export', 'var_dump'] as $how) {
+                    self::assertStringContainsString('api-staging.example.test', $dumps[$how], "$how($label) positive control");
+                }
+            }
+        }
+    }
+
+    #[Test]
+    public function serializingTheClientFails(): void
+    {
+        $this->expectException(\Exception::class);
+        serialize(new Client(self::KEY, ['transport' => new FakeTransport()]));
+    }
+
+    #[Test]
+    public function exposesTheResource(): void
+    {
+        self::assertInstanceOf(Emails::class, (new Client('k', ['transport' => new FakeTransport()]))->emails);
+    }
+}
