@@ -8,9 +8,11 @@ use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Http\Transport;
 use Tratto\Resources\Audiences;
+use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
 use Tratto\Resources\Domains;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Templates;
 use Tratto\Resources\Webhooks;
 
 final class Client
@@ -22,6 +24,8 @@ final class Client
     public readonly Emails $emails;
     public readonly Contacts $contacts;
     public readonly Audiences $audiences;
+    public readonly Campaigns $campaigns;
+    public readonly Templates $templates;
     public readonly Webhooks $webhooks;
     public readonly Domains $domains;
 
@@ -61,5 +65,7 @@ final class Client
         $this->contacts = new Contacts($http);
         $this->audiences = new Audiences($http);
         $this->domains = new Domains($http);
+        $this->campaigns = new Campaigns($http);
+        $this->templates = new Templates($http);
     }
 }

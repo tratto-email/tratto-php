@@ -33,6 +33,19 @@ final class IdEncodingTest extends ResourceTestCase
         yield 'domains.get' => [static fn(Client $c, string $id) => $c->domains->get($id), 'GET', '/v1/domains/{id}'];
         yield 'domains.verify' => [static fn(Client $c, string $id) => $c->domains->verify($id), 'POST', '/v1/domains/{id}/verify'];
         yield 'domains.delete' => [static fn(Client $c, string $id) => $c->domains->delete($id), 'DELETE', '/v1/domains/{id}'];
+        yield 'campaigns.get' => [static fn(Client $c, string $id) => $c->campaigns->get($id), 'GET', '/v1/campaigns/{id}'];
+        yield 'campaigns.getStats' => [static fn(Client $c, string $id) => $c->campaigns->getStats($id), 'GET', '/v1/campaigns/{id}/stats'];
+        yield 'campaigns.send' => [static fn(Client $c, string $id) => $c->campaigns->send($id), 'POST', '/v1/campaigns/{id}/send'];
+        yield 'campaigns.unschedule' => [static fn(Client $c, string $id) => $c->campaigns->unschedule($id), 'POST', '/v1/campaigns/{id}/unschedule'];
+        yield 'campaigns.pause' => [static fn(Client $c, string $id) => $c->campaigns->pause($id), 'POST', '/v1/campaigns/{id}/pause'];
+        yield 'campaigns.testSend' => [static fn(Client $c, string $id) => $c->campaigns->testSend($id, 'a@b.it'), 'POST', '/v1/campaigns/{id}/test-send'];
+        yield 'templates.get' => [static fn(Client $c, string $id) => $c->templates->get($id), 'GET', '/v1/templates/{id}'];
+        yield 'templates.update' => [static fn(Client $c, string $id) => $c->templates->update($id, ['name' => 'N']), 'PATCH', '/v1/templates/{id}'];
+        yield 'templates.delete' => [static fn(Client $c, string $id) => $c->templates->delete($id), 'DELETE', '/v1/templates/{id}'];
+        yield 'templates.listVersions' => [static fn(Client $c, string $id) => $c->templates->listVersions($id), 'GET', '/v1/templates/{id}/versions'];
+        // listed by hand: the id is not the only path parameter (the version follows it)
+        yield 'templates.getVersion' => [static fn(Client $c, string $id) => $c->templates->getVersion($id, 3), 'GET', '/v1/templates/{id}/versions/3'];
+        yield 'templates.testSend' => [static fn(Client $c, string $id) => $c->templates->testSend($id, 'a@b.it'), 'POST', '/v1/templates/{id}/test-send'];
     }
 
     /** @param \Closure(Client, string): mixed $call */

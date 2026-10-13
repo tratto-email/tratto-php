@@ -11,10 +11,12 @@ use Tratto\Client;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Resources\Audiences;
+use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
 use Tratto\Resources\Domains;
 use Tratto\Resources\Emails;
 use Tratto\Resources\Resource;
+use Tratto\Resources\Templates;
 use Tratto\Resources\Webhooks;
 use Tratto\Tests\Fake\FakeTransport;
 use Tratto\TrattoException;
@@ -213,6 +215,8 @@ final class ClientTest extends TestCase
             'emails' => Emails::class,
             'contacts' => Contacts::class,
             'audiences' => Audiences::class,
+            'campaigns' => Campaigns::class,
+            'templates' => Templates::class,
             'webhooks' => Webhooks::class,
             'domains' => Domains::class,
         ];
