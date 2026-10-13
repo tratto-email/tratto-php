@@ -5,37 +5,9 @@ declare(strict_types=1);
 namespace Tratto\Tests\Resources;
 
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
-use Tratto\Client;
-use Tratto\Tests\Fake\FakeTransport;
 
-final class WebhooksTest extends TestCase
+final class WebhooksTest extends ResourceTestCase
 {
-    private const BASE = 'https://api.tratto.email';
-
-    private FakeTransport $fake;
-    private Client $client;
-
-    protected function setUp(): void
-    {
-        $this->fake = new FakeTransport();
-        $this->client = new Client('key', ['transport' => $this->fake]);
-    }
-
-    private function assertRequest(string $method, string $url, ?string $body): void
-    {
-        $request = $this->fake->last();
-        self::assertSame($method, $request['method']);
-        self::assertSame(self::BASE . $url, $request['url']);
-        self::assertSame($body, $request['body']);
-        self::assertArrayNotHasKey('Idempotency-Key', $request['headers']);
-        if ($body === null) {
-            self::assertArrayNotHasKey('Content-Type', $request['headers']);
-        } else {
-            self::assertSame('application/json', $request['headers']['Content-Type']);
-        }
-    }
-
     #[Test]
     public function createPostsTheParamsAndReturnsTheSecret(): void
     {
@@ -101,13 +73,6 @@ final class WebhooksTest extends TestCase
     #[Test]
     public function exposesExactlyTheNodeMethods(): void
     {
-        $methods = array_map(
-            static fn(\ReflectionMethod $m): string => $m->getName(),
-            (new \ReflectionClass($this->client->webhooks))->getMethods(\ReflectionMethod::IS_PUBLIC),
-        );
-        $methods = array_values(array_diff($methods, ['__construct']));
-        sort($methods);
-
-        self::assertSame(['create', 'delete', 'list', 'listDeliveries', 'rotateSecret', 'test'], $methods);
+        self::assertPublicMethods($this->client->webhooks, ['create', 'delete', 'list', 'listDeliveries', 'rotateSecret', 'test']);
     }
 }

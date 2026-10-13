@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Tratto\Client;
 use Tratto\Http\CurlTransport;
+use Tratto\Http\HttpClient;
 use Tratto\TrattoException;
 
 /**
@@ -220,6 +221,22 @@ final class CurlTransportTest extends TestCase
             self::assertSame('invalid_header', $e->errorCode);
             self::assertSame('Header "Idempotency-Key" contains CR, LF or NUL', $e->getMessage());
         }
+    }
+
+    /** A CSV (and an empty one) reaches the server byte for byte as text/csv, with real curl. */
+    #[Test]
+    #[TestWith(["\u{FEFF}email,name\r\nann@x.it,Zoë \"Z\"\r\n"])]
+    #[TestWith([''])]
+    public function sendsARawCsvBody(string $csv): void
+    {
+        $http = new HttpClient('tr_test_k', self::$url, 5.0, new CurlTransport());
+        $echo = $http->request('POST', '/v1/contacts/import', $csv, contentType: 'text/csv');
+
+        self::assertNotNull($echo);
+        self::assertSame('POST', $echo['method']);
+        self::assertSame($csv, $echo['body']);
+        self::assertSame('text/csv', $echo['headers']['content-type']);
+        self::assertSame((string) strlen($csv), $echo['headers']['content-length']);
     }
 
     #[Test]

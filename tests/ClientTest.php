@@ -10,7 +10,11 @@ use PHPUnit\Framework\TestCase;
 use Tratto\Client;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
+use Tratto\Resources\Audiences;
+use Tratto\Resources\Contacts;
+use Tratto\Resources\Domains;
 use Tratto\Resources\Emails;
+use Tratto\Resources\Resource;
 use Tratto\Resources\Webhooks;
 use Tratto\Tests\Fake\FakeTransport;
 use Tratto\TrattoException;
@@ -170,7 +174,7 @@ final class ClientTest extends TestCase
             $headerException = $e;
         }
 
-        foreach (['client' => $client, 'resource' => $client->emails, 'webhooks' => $client->webhooks, 'exception' => $exception, 'networkException' => $networkException, 'headerException' => $headerException] as $label => $subject) {
+        foreach (['client' => $client, 'resource' => $client->emails, 'webhooks' => $client->webhooks, 'contacts' => $client->contacts, 'exception' => $exception, 'networkException' => $networkException, 'headerException' => $headerException] as $label => $subject) {
             ob_start();
             var_dump($subject);
             $dumps = [
@@ -186,7 +190,7 @@ final class ClientTest extends TestCase
                 self::assertStringNotContainsString(self::KEY, $dump, "$how($label) leaks the key");
                 self::assertStringNotContainsString('SuperSecret', $dump, "$how($label) leaks part of the key");
             }
-            if ($subject instanceof Client || $subject instanceof Emails || $subject instanceof Webhooks) {
+            if ($subject instanceof Client || $subject instanceof Resource) {
                 foreach (['print_r', 'var_export', 'var_dump'] as $how) {
                     self::assertStringContainsString('api-staging.example.test', $dumps[$how], "$how($label) positive control");
                 }
@@ -205,9 +209,22 @@ final class ClientTest extends TestCase
     public function exposesTheResourcesSharingOneKeyHolder(): void
     {
         $client = new Client('k', ['transport' => new FakeTransport()]);
-        self::assertInstanceOf(Emails::class, $client->emails);
-        self::assertInstanceOf(Webhooks::class, $client->webhooks);
-        $http = static fn(object $resource): mixed => (new \ReflectionProperty($resource, 'http'))->getValue($resource);
-        self::assertSame($http($client->emails), $http($client->webhooks));
+        $expected = [
+            'emails' => Emails::class,
+            'contacts' => Contacts::class,
+            'audiences' => Audiences::class,
+            'webhooks' => Webhooks::class,
+            'domains' => Domains::class,
+        ];
+        $actual = [];
+        foreach ((new \ReflectionClass($client))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            $actual[$property->getName()] = $property->getValue($client)::class;
+        }
+        self::assertSame($expected, $actual);
+
+        $http = static fn(object $resource): mixed => (new \ReflectionProperty(Resource::class, 'http'))->getValue($resource);
+        foreach (array_keys($expected) as $name) {
+            self::assertSame($http($client->emails), $http($client->{$name}), $name);
+        }
     }
 }
