@@ -22,7 +22,11 @@ final class Client
      */
     public function __construct(#[\SensitiveParameter] string $apiKey, array $options = [])
     {
-        if ($apiKey === '') {
+        // Exception traces show the current value of parameters, and PHP 8.1 ignores #[\SensitiveParameter]:
+        // move the key into a local before anything can throw.
+        $key = $apiKey;
+        $apiKey = '[redacted]';
+        if ($key === '') {
             throw new \InvalidArgumentException('apiKey is required');
         }
         $unknown = array_diff(array_keys($options), ['baseUrl', 'timeout', 'transport']);
@@ -33,7 +37,7 @@ final class Client
         $baseUrl = $options['baseUrl'] ?? self::DEFAULT_BASE_URL;
         $timeout = $options['timeout'] ?? self::DEFAULT_TIMEOUT;
         $transport = $options['transport'] ?? new CurlTransport();
-        if (!is_string($baseUrl) || !preg_match('#^https?://#', $baseUrl)) {
+        if (!is_string($baseUrl) || preg_match('#^https?://[^\x00-\x20\x7f]+$#D', $baseUrl) !== 1) {
             throw new \InvalidArgumentException('baseUrl must be an http(s) URL');
         }
         if (!(is_int($timeout) || is_float($timeout)) || $timeout <= 0) {
@@ -43,7 +47,7 @@ final class Client
             throw new \InvalidArgumentException('transport must implement ' . Transport::class);
         }
 
-        $http = new HttpClient($apiKey, rtrim($baseUrl, '/'), (float) $timeout, $transport);
+        $http = new HttpClient($key, rtrim($baseUrl, '/'), (float) $timeout, $transport);
         $this->emails = new Emails($http);
     }
 }

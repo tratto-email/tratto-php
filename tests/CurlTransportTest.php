@@ -23,9 +23,7 @@ final class CurlTransportTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $port = self::freePort();
-        // under phpdbg (Infection's coverage run) the built-in server needs the php binary next to it
-        $php = PHP_SAPI === 'phpdbg' ? dirname(PHP_BINARY) . '/php' : PHP_BINARY;
-        self::$server = self::spawn([$php, '-S', '127.0.0.1:' . $port, __DIR__ . '/fixtures/server.php']);
+        self::$server = self::spawn([PHP_BINARY, '-q', '-S', '127.0.0.1:' . $port, __DIR__ . '/fixtures/server.php']);
         self::waitFor($port);
         self::$url = 'http://127.0.0.1:' . $port;
     }
@@ -118,15 +116,18 @@ final class CurlTransportTest extends TestCase
 
         self::assertSame('connection_error', $e->errorCode);
         self::assertStringStartsWith('Connection error: ', $e->getMessage());
+        self::assertStringContainsString('timed out', $e->getMessage());
         self::assertLessThan(0.9, microtime(true) - $start);
     }
 
     #[Test]
     public function mapsARefusedConnection(): void
     {
-        $e = self::failure('http://127.0.0.1:' . self::freePort() . '/', 5.0);
+        $port = self::freePort();
+        $e = self::failure('http://127.0.0.1:' . $port . '/', 5.0);
 
         self::assertSame('connection_error', $e->errorCode);
+        self::assertStringContainsString((string) $port, $e->getMessage(), 'the curl error is kept');
         self::assertSame(0, $e->getCode());
     }
 
@@ -166,6 +167,58 @@ final class CurlTransportTest extends TestCase
             proc_close($tls);
             array_map('unlink', glob($dir . '/*') ?: []);
             rmdir($dir);
+        }
+    }
+
+    /** @return array<int, mixed> */
+    private static function options(float $timeout): array
+    {
+        return (new \ReflectionMethod(CurlTransport::class, 'options'))->invoke(null, $timeout);
+    }
+
+    /** C4 and timeouts, checked on the exact options given to curl. */
+    #[Test]
+    public function fixesTheCurlOptions(): void
+    {
+        self::assertSame([
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT_MS => 30000,
+            CURLOPT_CONNECTTIMEOUT_MS => 10000,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_FAILONERROR => false,
+        ], self::options(30.0));
+    }
+
+    #[Test]
+    #[TestWith([1.2344, 1235, 1235])]
+    #[TestWith([0.0004, 1, 1])]
+    #[TestWith([10.0, 10000, 10000])]
+    #[TestWith([45.5, 45500, 10000])]
+    public function roundsTimeoutsUpToMilliseconds(float $timeout, int $total, int $connect): void
+    {
+        $options = self::options($timeout);
+        self::assertSame($total, $options[CURLOPT_TIMEOUT_MS]);
+        self::assertSame($connect, $options[CURLOPT_CONNECTTIMEOUT_MS]);
+    }
+
+    /** D1 with real curl: a CR/LF in a header value never reaches the wire. */
+    #[Test]
+    public function headerInjectionNeverReachesTheServer(): void
+    {
+        $client = new Client('tr_test_k', ['baseUrl' => self::$url, 'timeout' => 5]);
+        // positive control: a clean key arrives as one header
+        $echo = $client->emails->list();
+        self::assertSame('/v1/emails', $echo['uri']);
+
+        try {
+            $client->emails->send(['to' => 'a@b.it'], "abc\r\nX-Injected: yes");
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame('invalid_header', $e->errorCode);
+            self::assertSame('Header "Idempotency-Key" contains CR, LF or NUL', $e->getMessage());
         }
     }
 
@@ -213,6 +266,9 @@ final class CurlTransportTest extends TestCase
     }
 
     /**
+     * Pipes, not files, for the child's output: under Infection a 'file' descriptor goes through its stream
+     * wrapper and posix_spawn fails. Both servers run quiet, so the pipes never fill.
+     *
      * @param list<string>          $command
      * @param array<string, string> $env
      *
@@ -220,7 +276,7 @@ final class CurlTransportTest extends TestCase
      */
     private static function spawn(array $command, array $env = [])
     {
-        $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes, null, $env + getenv());
+        $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $env + getenv());
 
         return is_resource($process) ? $process : throw new \RuntimeException('cannot start ' . $command[0]);
     }

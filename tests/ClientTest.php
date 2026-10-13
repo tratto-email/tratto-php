@@ -34,6 +34,11 @@ final class ClientTest extends TestCase
         yield 'baseUrl without scheme' => [['baseUrl' => 'api.tratto.email'], 'baseUrl must be an http(s) URL'];
         yield 'baseUrl with another scheme' => [['baseUrl' => 'file:///etc/passwd'], 'baseUrl must be an http(s) URL'];
         yield 'baseUrl with scheme not at start' => [['baseUrl' => 'x https://a'], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with NUL' => [['baseUrl' => "http://127.0.0.1:1/\0x"], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with space' => [['baseUrl' => 'https://a b'], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with trailing newline' => [['baseUrl' => "https://a\n"], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl with DEL' => [['baseUrl' => "https://a\x7f"], 'baseUrl must be an http(s) URL'];
+        yield 'baseUrl scheme only' => [['baseUrl' => 'https://'], 'baseUrl must be an http(s) URL'];
         yield 'timeout zero' => [['timeout' => 0], 'timeout must be a positive number of seconds'];
         yield 'timeout negative' => [['timeout' => -1.5], 'timeout must be a positive number of seconds'];
         yield 'timeout string' => [['timeout' => '30'], 'timeout must be a positive number of seconds'];
@@ -48,6 +53,40 @@ final class ClientTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage($message);
         new Client('k', $options);
+    }
+
+    /**
+     * D4/D5: constructor errors must not carry the key in their trace. PHP 8.1 ignores #[\SensitiveParameter],
+     * so on 8.1 this is the only protection; on 8.2+ the attribute covers it as well.
+     *
+     * @param array<string, mixed> $options
+     */
+    #[Test]
+    #[DataProvider('badOptions')]
+    public function constructorErrorsNeverCarryTheKey(array $options, string $message): void
+    {
+        $previous = ini_set('zend.exception_ignore_args', '0');
+        try {
+            new Client(self::KEY, $options);
+            self::fail('expected InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            self::assertSame($message, $e->getMessage());
+            // positive control: the trace does record arguments (the options array is there)
+            self::assertArrayHasKey('args', $e->getTrace()[0]);
+            // assertFalse, not assertStringNotContainsString: on failure the haystack (the whole trace) is too big to export
+            self::assertFalse(str_contains(print_r($e->getTrace(), true), 'SuperSecret'), 'the trace carries the key');
+            self::assertFalse(str_contains((string) $e, 'SuperSecret'), '__toString carries the key');
+        } finally {
+            ini_set('zend.exception_ignore_args', (string) $previous);
+        }
+    }
+
+    #[Test]
+    public function acceptsAnHttpBaseUrlWithPort(): void
+    {
+        $fake = new FakeTransport();
+        (new Client('k', ['baseUrl' => 'http://127.0.0.1:8080', 'transport' => $fake]))->emails->get('e');
+        self::assertSame('http://127.0.0.1:8080/v1/emails/e', $fake->last()['url']);
     }
 
     #[Test]
@@ -121,7 +160,16 @@ final class ClientTest extends TestCase
             $networkException = $e;
         }
 
-        foreach (['client' => $client, 'resource' => $client->emails, 'exception' => $exception, 'networkException' => $networkException] as $label => $subject) {
+        // a header-injection error, raised before the transport
+        try {
+            $client->emails->send(['to' => 'a@b.it'], "x\r\nY: z");
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame('invalid_header', $e->errorCode);
+            $headerException = $e;
+        }
+
+        foreach (['client' => $client, 'resource' => $client->emails, 'exception' => $exception, 'networkException' => $networkException, 'headerException' => $headerException] as $label => $subject) {
             ob_start();
             var_dump($subject);
             $dumps = [

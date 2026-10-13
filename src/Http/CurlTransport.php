@@ -29,22 +29,15 @@ final class CurlTransport implements Transport
             $lines[] = $name . ': ' . $value;
         }
 
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_CUSTOMREQUEST => $method,
-            CURLOPT_HTTPHEADER => $lines,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT_MS => (int) ceil($timeout * 1000),
-            CURLOPT_CONNECTTIMEOUT_MS => (int) ceil(min(self::CONNECT_TIMEOUT, $timeout) * 1000),
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-            CURLOPT_FAILONERROR => false,
-        ]);
+        $request = [CURLOPT_URL => $url, CURLOPT_CUSTOMREQUEST => $method, CURLOPT_HTTPHEADER => $lines];
         if ($body !== null) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            $request[CURLOPT_POSTFIELDS] = $body;
+        }
+
+        $ch = curl_init();
+        // curl_setopt_array stops at the first rejected option: never send with a partial configuration
+        if (!curl_setopt_array($ch, $request + self::options($timeout))) {
+            throw new TrattoException('Connection error: could not configure curl', 'connection_error', 0);
         }
 
         $response = curl_exec($ch);
@@ -53,5 +46,25 @@ final class CurlTransport implements Transport
         }
 
         return ['status' => curl_getinfo($ch, CURLINFO_RESPONSE_CODE), 'body' => $response];
+    }
+
+    /**
+     * The fixed options: timeouts in milliseconds (rounded up, so a sub-millisecond timeout is never 0 = infinite),
+     * TLS verification, no redirects, HTTP(S) only.
+     *
+     * @return array<int, mixed>
+     */
+    private static function options(float $timeout): array
+    {
+        return [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT_MS => (int) ceil($timeout * 1000),
+            CURLOPT_CONNECTTIMEOUT_MS => (int) ceil(min(self::CONNECT_TIMEOUT, $timeout) * 1000),
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_FAILONERROR => false,
+        ];
     }
 }

@@ -183,6 +183,50 @@ final class HttpClientTest extends TestCase
         self::assertArrayNotHasKey('Content-Type', $this->fake->last()['headers']);
     }
 
+    /** @return iterable<string, array{string, string}> */
+    public static function injectedHeaders(): iterable
+    {
+        yield 'CRLF in value' => ['Idempotency-Key', "abc\r\nX-Injected: yes"];
+        yield 'LF in value' => ['Idempotency-Key', "abc\nX-Injected: yes"];
+        yield 'CR in value' => ['Idempotency-Key', "abc\r"];
+        yield 'NUL in value' => ['Idempotency-Key', "abc\0"];
+        yield 'LF in name' => ["X-A\nX-B", 'v'];
+    }
+
+    /** D1: no header injection, and nothing is sent. */
+    #[Test]
+    #[DataProvider('injectedHeaders')]
+    public function rejectsHeaderInjection(string $name, string $value): void
+    {
+        try {
+            $this->http->request('POST', '/v1/emails', [], [$name => $value]);
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame('invalid_header', $e->errorCode);
+            self::assertSame(0, $e->statusCode);
+            self::assertStringNotContainsString('abc', $e->getMessage(), 'the value is not echoed');
+        }
+        self::assertSame([], $this->fake->requests);
+    }
+
+    #[Test]
+    public function acceptsCleanHeaders(): void
+    {
+        $this->http->request('POST', '/v1/emails', [], ['Idempotency-Key' => 'order-42 \t ok']);
+        self::assertSame('order-42 \t ok', $this->fake->last()['headers']['Idempotency-Key']);
+    }
+
+    #[Test]
+    public function namesTheRejectedHeaderWithControlCharsEscaped(): void
+    {
+        try {
+            $this->http->request('GET', '/a', null, ["X-A\nB" => 'v']);
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame('Header "X-A\\nB" contains CR, LF or NUL', $e->getMessage());
+        }
+    }
+
     #[Test]
     public function formatsDatesInUtcWithMilliseconds(): void
     {

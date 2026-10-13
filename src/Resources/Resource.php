@@ -51,7 +51,7 @@ abstract class Resource
             $out[$key] = match (true) {
                 is_bool($value) => $value ? 'true' : 'false',
                 $value instanceof \DateTimeInterface => HttpClient::date($value),
-                is_scalar($value) => (string) $value,
+                is_scalar($value) => $value,
                 default => throw new \InvalidArgumentException(sprintf('Query parameter "%s" must be a scalar, a date or null', $key)),
             };
         }

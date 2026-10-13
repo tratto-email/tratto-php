@@ -42,6 +42,13 @@ final class HttpClient
         string $contentType = 'application/json',
         bool $unwrap = false,
     ): ?array {
+        foreach ($headers as $name => $value) {
+            if (preg_match('/[\r\n\0]/', $name . $value) === 1) {
+                // the value is not echoed: it may come from user input
+                throw new TrattoException(sprintf('Header "%s" contains CR, LF or NUL', addcslashes($name, "\0..\37")), 'invalid_header', 0);
+            }
+        }
+
         // Never write the key into a parameter of this method: exception traces show parameters' current values.
         $allHeaders = [
             'Authorization' => 'Bearer ' . ($this->apiKey)(),
@@ -68,7 +75,7 @@ final class HttpClient
         }
 
         try {
-            $json = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+            $json = json_decode($response['body'], true, flags: JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             $json = null;
         }
