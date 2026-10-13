@@ -3,7 +3,8 @@
 /**
  * Laravel: receive and verify Tratto webhooks.
  *
- * Register the route in routes/api.php, which has no CSRF middleware (a webhook carries no CSRF token):
+ * Register the route in routes/api.php, which has no CSRF middleware (a webhook carries no CSRF token).
+ * On Laravel 11 or later that file is created by `php artisan install:api`.
  *
  *     Route::post('/webhooks/tratto', \App\Http\Controllers\TrattoWebhookController::class);
  */

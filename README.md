@@ -51,7 +51,7 @@ $tratto->emails->send([
 ```
 
 Keep the key out of your code: read it from the environment or your secret store. API keys are created in
-the dashboard, under Settings, API keys.
+the dashboard, under API Keys.
 
 ## Setup
 
@@ -64,7 +64,7 @@ $tratto = new Tratto\Client($apiKey, [
 
 | Option | Type | Description |
 |---|---|---|
-| `baseUrl` | `string` | `http://` or `https://` URL. With `http://` the key travels in clear text: use it only for a local server. |
+| `baseUrl` | `string` | `http://` or `https://` URL, without `/v1` (the SDK adds it). With `http://` the key travels in clear text: use it only for a local server. |
 | `timeout` | `int\|float` | Total time per request, in seconds. |
 | `transport` | `Tratto\Http\Transport` | Replaces the built-in curl transport, for example with a fake in your tests. See [Custom transport](#custom-transport). |
 
@@ -88,16 +88,16 @@ updating the SDK.
 
 Every workspace can create test keys (`tratto_test_...`) next to live ones. A test key runs the same
 pipeline (statuses, timeline, webhooks) but nothing is delivered: no domain verification needed, no
-monthly quota used.
+monthly quota used. Test sends have their own limit of 100 emails per day.
 
 | Recipient | Outcome |
 |---|---|
 | any address | `delivered` |
-| `bounced@simulator.tratto.email` | permanent bounce, the email ends `failed` |
+| `bounced@simulator.tratto.email` | permanent bounce, the email ends `bounced` |
 | `soft-bounced@simulator.tratto.email` | transient bounce |
 | `complained@simulator.tratto.email` | spam complaint |
 
-Responses and webhook payloads carry `livemode: false`. A test key sees only test data. Calls that reach
+Email responses and webhook payloads carry `livemode: false`. A test key sees only test data. Calls that reach
 real recipients are rejected for test keys with `403 TEST_MODE_NOT_SUPPORTED`: campaign send, campaign
 test send, template test send and flow activation.
 
@@ -178,7 +178,7 @@ $tratto->campaigns->get($campaign['id']);
 ```php
 // With "markdown" the SDK adds format "emailmd" for you.
 $template = $tratto->templates->create(['name' => 'Welcome', 'markdown' => '# Hi {{name}}']);
-$tratto->templates->update($template['id'], ['html' => '<h1>Hello {{name}}!</h1>']);
+$tratto->templates->update($template['id'], ['markdown' => '# Hello {{name}}']); // a template keeps its format: markdown stays markdown
 
 $versions = $tratto->templates->listVersions($template['id']);
 $v2 = $tratto->templates->getVersion($template['id'], 2);
@@ -230,10 +230,10 @@ for test keys.
 ```php
 $flow = $tratto->flows->create(['name' => 'Welcome series']);
 $tratto->flows->update($flow['id'], [
-    'trigger' => ['type' => 'contact_tag_added', 'config' => ['tag' => 'signed-up']],
+    'trigger' => ['type' => 'contact_tag_added', 'config' => ['tagName' => 'signed-up']],
     'steps' => [
         ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_welcome']],
-        ['id' => 'step_2', 'type' => 'wait', 'config' => ['duration' => '2d']],
+        ['id' => 'step_2', 'type' => 'wait', 'config' => ['delay' => '2', 'unit' => 'days']],
     ],
 ]);
 $tratto->flows->activate($flow['id']);
@@ -242,6 +242,10 @@ $tratto->flows->list();
 $tratto->flows->get($flow['id']);
 $tratto->flows->delete($flow['id']); // ['id' => ...]
 ```
+
+Config values are strings, and an unknown config key is ignored without an error: a trigger without
+`tagName` enrolls contacts on any tag change, a `wait` without `delay` and `unit` waits 5 minutes. The
+accepted keys for each trigger and step type are declared on `Flows::update()`, so PHPStan checks them.
 
 > **Flows need an API key with the `*` permission.** There are no `flows:read` or `flows:write` scopes.
 > Create a key for the job and revoke it when you are done. `activate` is rejected for test keys.
@@ -287,7 +291,7 @@ The SDK does not retry. To retry a send safely, pass the same idempotency key.
 ### PHP 8.1: do not log full exception traces
 
 On PHP 8.2 and later the key and the webhook secret are marked `#[\SensitiveParameter]` and never appear
-in traces. PHP 8.1 ignores that attribute: the SDK moves them out of its parameters before doing anything
+in the SDK's own traces. PHP 8.1 ignores that attribute: the SDK moves them out of its parameters before doing anything
 else, but an argument of the wrong type (for example an array where a string is expected) raises a
 `TypeError` before that, and the trace of that error holds the arguments. On PHP 8.1, log the
 message, `errorCode` and `statusCode` of SDK exceptions, not `getTraceAsString()` or a dump of the
@@ -317,7 +321,8 @@ $event = json_decode($payload, true);
 // Deliveries can repeat: use $event['id'] to process each event once.
 ```
 
-With Laravel (route in `routes/api.php`, which has no CSRF middleware):
+With Laravel (route in `routes/api.php`, which has no CSRF middleware; on Laravel 11 or later create it with
+`php artisan install:api`):
 
 ```php
 public function __invoke(Illuminate\Http\Request $request)

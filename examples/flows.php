@@ -20,10 +20,12 @@ run_example(static function (Client $tratto): void {
     $id = (string) $created['id'];
 
     $tratto->flows->update($id, [
-        'trigger' => ['type' => 'contact_tag_added', 'config' => ['tag' => 'signed-up']],
+        // tagName: without it the flow enrolls on any tag change.
+        'trigger' => ['type' => 'contact_tag_added', 'config' => ['tagName' => 'signed-up']],
         'steps' => [
             ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_welcome']],
-            ['id' => 'step_2', 'type' => 'wait', 'config' => ['duration' => '2d']],
+            // delay and unit (seconds, minutes, hours, days); without them the wait is 5 minutes.
+            ['id' => 'step_2', 'type' => 'wait', 'config' => ['delay' => '2', 'unit' => 'days']],
             ['id' => 'step_3', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_tips']],
         ],
     ]);

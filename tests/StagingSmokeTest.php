@@ -115,6 +115,24 @@ final class StagingSmokeTest extends TestCase
         self::assertSame(2, $code, 'a similar flag is not the flag');
     }
 
+    /**
+     * Positive control for the flag (N5): with --allow-production a production URL passes the guard. The request
+     * goes to the dead proxy of runSmoke(), so nothing leaves this machine; the output proves it.
+     */
+    #[Test]
+    public function theFlagLetsProductionThrough(): void
+    {
+        [$code, $output] = self::runSmoke(['TRATTO_API_KEY' => self::KEY, 'TRATTO_FROM_EMAIL' => 'a@b.it', 'TRATTO_BASE_URL' => 'https://api.tratto.email'], ['--allow-production']);
+
+        self::assertSame(1, $code, $output);
+        self::assertStringContainsString('Smoke test against https://api.tratto.email', $output);
+        self::assertStringContainsString('connection_error', $output);
+        // The target is api.tratto.email, so a connection error naming 127.0.0.1 can only come from the dead proxy
+        // (curl 8 says "over proxy 127.0.0.1", older curl "Failed to connect to 127.0.0.1 port 1").
+        self::assertMatchesRegularExpression('/connection_error: .*127\.0\.0\.1/', $output, 'the request must have stopped at the dead local proxy');
+        self::assertStringNotContainsString('SmokeSecret', $output);
+    }
+
     #[Test]
     public function defaultsToStaging(): void
     {

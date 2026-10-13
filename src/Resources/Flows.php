@@ -4,7 +4,26 @@ declare(strict_types=1);
 
 namespace Tratto\Resources;
 
-/** The API accepts flow calls only from keys with full ("*") permission: there is no flows scope. */
+/**
+ * The API accepts flow calls only from keys with full ("*") permission: there is no flows scope.
+ *
+ * Config keys are the ones the API reads (tratto-api flowTriggerEval and flowStepExecutor); every value is a
+ * string. An unknown key is not an API error, it is silently ignored, so PHPStan checks the key names here.
+ *
+ * @phpstan-type FlowTrigger (
+ *     array{type: 'contact_joins_audience', config?: array<'audienceId', string>}
+ *     | array{type: 'contact_tag_added'|'contact_tag_removed', config?: array<'tagName', string>}
+ *     | array{type: 'email_event', config?: array<'eventType'|'emailId', string>}
+ *     | array{type: 'manual'}
+ * )
+ * @phpstan-type FlowStep (
+ *     array{id: string, type: 'send_email', config?: array<'templateId'|'subject'|'from'|'fromName'|'replyTo', string>}
+ *     | array{id: string, type: 'wait', config?: array<'delay'|'unit', string>}
+ *     | array{id: string, type: 'branch', config?: array<'conditionField'|'conditionOperator'|'conditionValue'|'trueNextStep'|'falseNextStep', string>}
+ *     | array{id: string, type: 'update_contact', config?: array<'action'|'field'|'value'|'tag', string>}
+ *     | array{id: string, type: 'webhook_call', config?: array<'url'|'method'|'secret', string>}
+ * )
+ */
 final class Flows extends Resource
 {
     /**
@@ -18,7 +37,9 @@ final class Flows extends Resource
     }
 
     /**
-     * @param array<string, mixed> $params
+     * Creates a draft flow (manual trigger, no steps): set trigger and steps with update().
+     *
+     * @param array{name: string} $params
      *
      * @return array<mixed> {id}
      */
@@ -34,7 +55,10 @@ final class Flows extends Resource
     }
 
     /**
-     * @param array<string, mixed> $params
+     * Trigger examples: contact_tag_added with config tagName; wait steps with config delay ("2") and
+     * unit (seconds, minutes, hours, days). Steps of an active flow cannot be changed: deactivate first.
+     *
+     * @param array{name?: string, trigger?: FlowTrigger, steps?: list<FlowStep>} $params
      *
      * @return array<mixed>
      */
