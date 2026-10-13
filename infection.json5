@@ -1,0 +1,9 @@
+{
+    // Local only, not in CI: composer -d tools/infection install, then, with pcov or xdebug loaded,
+    // tools/infection/vendor/bin/infection. Check the harness first: --noop must kill 0 mutants.
+    "$schema": "tools/infection/vendor/infection/infection/resources/schema.json",
+    "source": {"directories": ["src"]},
+    "phpUnit": {"customPath": "vendor/bin/phpunit"},
+    "logs": {"text": "infection.log"},
+    "mutators": {"@default": true}
+}
