@@ -4,7 +4,7 @@ All notable changes to `tratto/email` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-10-14
 
 First release: parity with the Node.js SDK `@tratto/email` 1.4.0.
 
