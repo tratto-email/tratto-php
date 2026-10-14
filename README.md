@@ -111,14 +111,14 @@ $email = $tratto->emails->send([
     'from' => 'hello@mail.acme.com',
     'to' => ['alice@example.com', 'bob@example.com'],
     'subject' => 'Your receipt',
-    'templateId' => 'tpl_abc123',
+    'templateId' => 'tmpl_abc123',
     'variables' => ['name' => 'Alice'],
     'scheduledAt' => new DateTimeImmutable('+1 hour'),
 ], 'receipt-order-1234');
 
 $page = $tratto->emails->list(['status' => 'delivered', 'limit' => 20]);
-$detail = $tratto->emails->get('em_abc123');
-$events = $tratto->emails->listEvents('em_abc123');
+$detail = $tratto->emails->get('email_abc123');
+$events = $tratto->emails->listEvents('email_abc123');
 ```
 
 Only `emails->send` takes an idempotency key. A key containing a line break is rejected before sending.
@@ -147,7 +147,7 @@ $audience = $tratto->audiences->create([
 ]);
 $tratto->audiences->list(['limit' => 20]);
 $tratto->audiences->get($audience['id']);
-$result = $tratto->audiences->addContacts($audience['id'], ['con_1', 'con_2']); // 1 to 500 ids
+$result = $tratto->audiences->addContacts($audience['id'], ['cont_1', 'cont_2']); // 1 to 500 ids
 ```
 
 ### Campaigns
@@ -155,7 +155,7 @@ $result = $tratto->audiences->addContacts($audience['id'], ['con_1', 'con_2']); 
 ```php
 $campaign = $tratto->campaigns->create([
     'name' => 'June newsletter',
-    'templateId' => 'tpl_abc123',
+    'templateId' => 'tmpl_abc123',
     'audienceId' => 'aud_abc123',
     'fromName' => 'Acme',
     'fromEmail' => 'news@mail.acme.com',
@@ -232,7 +232,7 @@ $flow = $tratto->flows->create(['name' => 'Welcome series']);
 $tratto->flows->update($flow['id'], [
     'trigger' => ['type' => 'contact_tag_added', 'config' => ['tagName' => 'signed-up']],
     'steps' => [
-        ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_welcome']],
+        ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tmpl_welcome']],
         ['id' => 'step_2', 'type' => 'wait', 'config' => ['delay' => '2', 'unit' => 'days']],
     ],
 ]);

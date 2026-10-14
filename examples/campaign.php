@@ -15,7 +15,7 @@ use Tratto\Client;
 run_example(static function (Client $tratto): void {
     $created = $tratto->campaigns->create([
         'name' => 'June newsletter',
-        'templateId' => 'tpl_abc123',
+        'templateId' => 'tmpl_abc123',
         'audienceId' => 'aud_abc123',
         'fromName' => 'Acme Newsletter',
         'fromEmail' => 'news@mail.acme.com',
