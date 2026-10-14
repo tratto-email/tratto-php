@@ -4,6 +4,13 @@ All notable changes to `tratto/email` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-10-14
+
+### Fixed
+
+- README and `examples/`: placeholder ids now use the prefixes the API generates (`tmpl_`, `email_`,
+  `cont_` instead of `tpl_`, `em_`, `con_`). Documentation only, no code change.
+
 ## [1.0.0] - 2026-10-14
 
 First release: parity with the Node.js SDK `@tratto/email` 1.4.0.

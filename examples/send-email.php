@@ -37,7 +37,7 @@ run_example(static function (Client $tratto): void {
         'from' => 'hello@mail.acme.com',
         'to' => ['alice@example.com', 'bob@example.com'],
         'subject' => 'Your receipt',
-        'templateId' => 'tpl_abc123',
+        'templateId' => 'tmpl_abc123',
         'variables' => ['name' => 'Alice', 'amount' => '49.00 EUR'],
         // Schedule for later: a \DateTimeInterface is sent in UTC.
         'scheduledAt' => new DateTimeImmutable('+1 hour'),

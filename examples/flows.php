@@ -23,10 +23,10 @@ run_example(static function (Client $tratto): void {
         // tagName: without it the flow enrolls on any tag change.
         'trigger' => ['type' => 'contact_tag_added', 'config' => ['tagName' => 'signed-up']],
         'steps' => [
-            ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_welcome']],
+            ['id' => 'step_1', 'type' => 'send_email', 'config' => ['templateId' => 'tmpl_welcome']],
             // delay and unit (seconds, minutes, hours, days); without them the wait is 5 minutes.
             ['id' => 'step_2', 'type' => 'wait', 'config' => ['delay' => '2', 'unit' => 'days']],
-            ['id' => 'step_3', 'type' => 'send_email', 'config' => ['templateId' => 'tpl_tips']],
+            ['id' => 'step_3', 'type' => 'send_email', 'config' => ['templateId' => 'tmpl_tips']],
         ],
     ]);
 
