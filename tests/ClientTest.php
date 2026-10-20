@@ -141,6 +141,16 @@ final class ClientTest extends TestCase
         self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', Client::VERSION);
     }
 
+    #[Test]
+    public function versionMatchesTheLatestChangelogEntry(): void
+    {
+        $changelog = (string) file_get_contents(__DIR__ . '/../CHANGELOG.md');
+        if (preg_match('/^## \[(\d+\.\d+\.\d+)\]/m', $changelog, $match) !== 1) {
+            self::fail('positive control: the CHANGELOG has no release entry');
+        }
+        self::assertSame($match[1], Client::VERSION);
+    }
+
     /**
      * C3: the key must not appear in any dump of the client, of a resource, or of an exception
      * raised by a request. Positive control: the same dumps must contain the base URL.

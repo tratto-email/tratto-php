@@ -10,14 +10,15 @@ use Tratto\Client;
 use Tratto\Tests\Fake\FakeTransport;
 
 /**
- * Parity with tratto-node 1.4.0 (ee97684): every public method, by resource and by name.
- * 56 methods in Node, minus the deprecated workspace delete, inviteMember, removeMember,
- * minus workspace updateMember (its route is being removed: RFC-002, user decision of 2026-10-02) = 52.
+ * Parity with tratto-node 1.6.0: every public method, by resource and by name.
+ * 56 methods in tratto-node 1.4.0 (ee97684), minus the deprecated workspace delete, inviteMember, removeMember,
+ * minus workspace updateMember (its route is being removed: RFC-002, user decision of 2026-10-02) = 52,
+ * plus emails sendBatch (tratto-php#13, tratto-node 1.6.0) = 53.
  */
 final class ParityTest extends TestCase
 {
     private const EXPECTED = [
-        'emails' => ['get', 'list', 'listEvents', 'send'],
+        'emails' => ['get', 'list', 'listEvents', 'send', 'sendBatch'],
         'contacts' => ['create', 'getImportJob', 'importCsv', 'list', 'update'],
         'audiences' => ['addContacts', 'create', 'get', 'list'],
         'campaigns' => ['create', 'get', 'getStats', 'list', 'pause', 'send', 'testSend', 'unschedule'],
@@ -65,10 +66,10 @@ final class ParityTest extends TestCase
     }
 
     #[Test]
-    public function hasExactlyFiftyTwoMethods(): void
+    public function hasExactlyFiftyThreeMethods(): void
     {
-        self::assertSame(52, array_sum(array_map('count', self::actual())));
-        self::assertSame(52, array_sum(array_map('count', self::EXPECTED)), 'the expected list itself');
+        self::assertSame(53, array_sum(array_map('count', self::actual())));
+        self::assertSame(53, array_sum(array_map('count', self::EXPECTED)), 'the expected list itself');
     }
 
     #[Test]

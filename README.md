@@ -121,7 +121,40 @@ $detail = $tratto->emails->get('email_abc123');
 $events = $tratto->emails->listEvents('email_abc123');
 ```
 
-Only `emails->send` takes an idempotency key. A key containing a line break is rejected before sending.
+`emails->send` and `emails->sendBatch` take an idempotency key. A key containing a line break is rejected before sending.
+
+#### Batch
+
+`emails->sendBatch()` sends 1 to 100 emails in one request (requires API 0.22.0). Each email takes the
+fields of `send()` except `scheduledAt` and `attachments`: the API rejects the batch with a 422 whose
+`details` name the email, for example `/emails/3/to`. One idempotency key covers the whole batch.
+
+```php
+$emails = [
+    ['from' => 'hello@mail.acme.com', 'to' => ['alice@example.com'], 'subject' => 'Hi Alice', 'html' => '<p>Hi</p>'],
+    ['from' => 'hello@mail.acme.com', 'to' => ['bob@example.com'], 'subject' => 'Hi Bob', 'html' => '<p>Hi</p>'],
+];
+$batch = $tratto->emails->sendBatch($emails, 'newsletter-2026-10-20');
+
+// $batch: ['batchId' => 'batch_...', 'livemode' => true, 'accepted' => 2, 'failed' => 0,
+//          'emails' => [['id' => 'email_...', 'status' => 'queued', 'to' => [...]], ...]]
+```
+
+The response always has status 202, even when some emails failed: check `failed`. Results are in the order
+of the request, and a failed email has no `id` but an `error` with `code` and `message`. Resend only the
+failed ones, in a new batch with a **new** key (the same key would replay the same response):
+
+```php
+$failed = [];
+foreach ($batch['emails'] as $i => $result) {
+    if ($result['status'] === 'failed') {
+        $failed[] = $emails[$i];
+    }
+}
+if ($failed !== []) {
+    $tratto->emails->sendBatch($failed, 'newsletter-2026-10-20-retry-1');
+}
+```
 
 ### Contacts
 
@@ -285,8 +318,10 @@ try {
 | `statusCode` | `int` | The HTTP status (also `getCode()`), 0 when no response was received |
 | `suggestion` | `?string` | |
 | `docs` | `?string` | |
+| `details` | `?array` | The `details` of the API error as they are, for example a 422's list of `['path' => ..., 'message' => ...]`; `null` when absent |
 
-The SDK does not retry. To retry a send safely, pass the same idempotency key.
+The SDK does not retry. To retry a send safely, pass the same idempotency key. A `sendBatch` where only some
+emails failed is not an exception: it returns the 202 response with `failed` greater than 0 (see [Batch](#batch)).
 
 ### PHP 8.1: do not log full exception traces
 
