@@ -141,6 +141,17 @@ final class ClientTest extends TestCase
         self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', Client::VERSION);
     }
 
+    /** 1.1.0 added $details as the last parameter: a positional $previous must still land in $previous. */
+    #[Test]
+    public function exceptionKeepsPreviousAsTheSixthPositionalParameter(): void
+    {
+        $prev = new \RuntimeException('cause');
+        $e = new TrattoException('m', 'c', 400, null, null, $prev);
+
+        self::assertSame($prev, $e->getPrevious());
+        self::assertNull($e->details);
+    }
+
     #[Test]
     public function versionMatchesTheLatestChangelogEntry(): void
     {

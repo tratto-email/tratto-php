@@ -156,6 +156,8 @@ if ($failed !== []) {
 }
 ```
 
+After a 503 or a 500 nothing was sent and the key is released: retry the same batch with the same key.
+
 ### Contacts
 
 ```php
