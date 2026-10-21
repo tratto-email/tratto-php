@@ -141,6 +141,27 @@ final class ClientTest extends TestCase
         self::assertMatchesRegularExpression('/^\d+\.\d+\.\d+$/', Client::VERSION);
     }
 
+    /** 1.1.0 added $details as the last parameter: a positional $previous must still land in $previous. */
+    #[Test]
+    public function exceptionKeepsPreviousAsTheSixthPositionalParameter(): void
+    {
+        $prev = new \RuntimeException('cause');
+        $e = new TrattoException('m', 'c', 400, null, null, $prev);
+
+        self::assertSame($prev, $e->getPrevious());
+        self::assertNull($e->details);
+    }
+
+    #[Test]
+    public function versionMatchesTheLatestChangelogEntry(): void
+    {
+        $changelog = (string) file_get_contents(__DIR__ . '/../CHANGELOG.md');
+        if (preg_match('/^## \[(\d+\.\d+\.\d+)\]/m', $changelog, $match) !== 1) {
+            self::fail('positive control: the CHANGELOG has no release entry');
+        }
+        self::assertSame($match[1], Client::VERSION);
+    }
+
     /**
      * C3: the key must not appear in any dump of the client, of a resource, or of an exception
      * raised by a request. Positive control: the same dumps must contain the base URL.

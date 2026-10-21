@@ -67,6 +67,103 @@ final class EmailsTest extends TestCase
     }
 
     #[Test]
+    public function sendExposesTheErrorDetails(): void
+    {
+        $this->fake->queue(422, ['error' => ['message' => 'Invalid', 'code' => 'VALIDATION_ERROR', 'details' => [['path' => '/to', 'message' => 'Required']]]]);
+        try {
+            $this->client->emails->send(['subject' => 'Hi']);
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame([['path' => '/to', 'message' => 'Required']], $e->details);
+        }
+    }
+
+    #[Test]
+    public function sendErrorWithoutDetailsHasNullDetails(): void
+    {
+        $this->fake->queue(409, ['error' => ['message' => 'Duplicate', 'code' => 'IDEMPOTENCY_CONFLICT']]);
+        try {
+            $this->client->emails->send(['to' => 'b@y.it'], 'k');
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertNull($e->details);
+        }
+    }
+
+    #[Test]
+    public function sendBatchPostsAJsonListEvenFromAnAssociativeArray(): void
+    {
+        $data = ['batchId' => 'batch_1', 'livemode' => true, 'accepted' => 2, 'failed' => 0, 'emails' => [
+            ['id' => 'email_1', 'status' => 'queued', 'to' => ['a@x.it']],
+            ['id' => 'email_2', 'status' => 'queued', 'to' => ['b@x.it']],
+        ]];
+        $this->fake->queue(202, ['data' => $data]);
+
+        $result = $this->client->emails->sendBatch(['first' => ['to' => 'a@x.it', 'subject' => 'A'], 'second' => ['to' => 'b@x.it', 'subject' => 'B']]);
+
+        self::assertSame($data, $result);
+        self::assertCount(1, $this->fake->requests);
+        $request = $this->fake->last();
+        self::assertSame('POST', $request['method']);
+        self::assertSame('https://api.tratto.email/v1/emails/batch', $request['url']);
+        self::assertSame('{"emails":[{"to":"a@x.it","subject":"A"},{"to":"b@x.it","subject":"B"}]}', $request['body']);
+        self::assertSame('application/json', $request['headers']['Content-Type']);
+        self::assertArrayNotHasKey('Idempotency-Key', $request['headers']);
+    }
+
+    #[Test]
+    public function sendBatchAddsOneIdempotencyKey(): void
+    {
+        $this->client->emails->sendBatch([['to' => 'a@x.it']], 'batch-42');
+        self::assertSame('batch-42', $this->fake->last()['headers']['Idempotency-Key']);
+
+        $this->client->emails->sendBatch([['to' => 'a@x.it']], '');
+        self::assertArrayNotHasKey('Idempotency-Key', $this->fake->last()['headers']);
+    }
+
+    #[Test]
+    public function sendBatchReturnsAPartialFailureInsteadOfThrowing(): void
+    {
+        $data = ['batchId' => 'batch_1', 'livemode' => true, 'accepted' => 1, 'failed' => 1, 'emails' => [
+            ['id' => 'email_1', 'status' => 'queued', 'to' => ['a@x.it']],
+            ['status' => 'failed', 'to' => ['b@x.it'], 'error' => ['code' => 'SERVICE_UNAVAILABLE', 'message' => 'Try again']],
+        ]];
+        $this->fake->queue(202, ['data' => $data]);
+
+        self::assertSame($data, $this->client->emails->sendBatch([['to' => 'a@x.it'], ['to' => 'b@x.it']]));
+        self::assertCount(1, $this->fake->requests);
+    }
+
+    #[Test]
+    public function sendBatchThrowsOnServiceUnavailableWithoutRetrying(): void
+    {
+        $this->fake->queue(503, ['error' => ['message' => 'Unavailable', 'code' => 'SERVICE_UNAVAILABLE']]);
+        try {
+            $this->client->emails->sendBatch([['to' => 'a@x.it']], 'k');
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame(503, $e->statusCode);
+            self::assertSame('SERVICE_UNAVAILABLE', $e->errorCode);
+        }
+        self::assertCount(1, $this->fake->requests);
+    }
+
+    #[Test]
+    public function sendBatchValidationErrorCarriesThePathOfTheBadEmail(): void
+    {
+        $this->fake->queue(422, ['error' => ['message' => 'Invalid', 'code' => 'VALIDATION_ERROR', 'details' => [['path' => '/emails/1/to', 'message' => 'Required']]]]);
+        try {
+            $this->client->emails->sendBatch([['to' => 'a@x.it'], ['subject' => 'no recipient']]);
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame(422, $e->statusCode);
+            self::assertIsArray($e->details);
+            self::assertIsArray($e->details[0]);
+            self::assertSame('/emails/1/to', $e->details[0]['path']);
+        }
+    }
+
+    #[Test]
     public function listReturnsTheWholeEnvelope(): void
     {
         $page = ['data' => [['id' => 'em_1']], 'pagination' => ['hasMore' => true, 'nextCursor' => 'em_1']];

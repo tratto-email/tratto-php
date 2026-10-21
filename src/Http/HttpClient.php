@@ -66,7 +66,7 @@ final class HttpClient
             );
         } catch (TrattoException $e) {
             // Re-thrown without $previous: the transport's trace holds the headers, key included.
-            throw new TrattoException($e->getMessage(), $e->errorCode, $e->statusCode, $e->docs, $e->suggestion);
+            throw new TrattoException($e->getMessage(), $e->errorCode, $e->statusCode, $e->docs, $e->suggestion, details: $e->details);
         }
         $status = $response['status'];
 
@@ -89,6 +89,7 @@ final class HttpClient
                 $status,
                 self::str($error, 'docs'),
                 self::str($error, 'suggestion'),
+                details: is_array($error['details'] ?? null) ? $error['details'] : null,
             );
         }
 

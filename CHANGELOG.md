@@ -4,6 +4,20 @@ All notable changes to `tratto/email` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-10-20
+
+### Added
+
+- `emails->sendBatch()`: sends 1 to 100 emails in one request, `POST /v1/emails/batch`, with one optional
+  idempotency key for the whole batch. Requires API 0.22.0. A 202 with `failed` greater than 0 is returned,
+  not thrown. `scheduledAt` and `attachments` are not accepted in a batch: the API answers 422.
+- `TrattoException::$details`: the `details` of the API error as it is, for example the list of
+  `{path, message}` of a 422, or `null`. It is the last constructor parameter, so existing calls are unchanged.
+
+### Fixed
+
+- `Client::VERSION`, sent in the `User-Agent`, said `1.0.0` in the 1.0.1 release.
+
 ## [1.0.1] - 2026-10-14
 
 ### Fixed
