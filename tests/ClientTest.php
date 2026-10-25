@@ -11,6 +11,7 @@ use Tratto\Client;
 use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Resources\Analytics;
+use Tratto\Resources\Attachments;
 use Tratto\Resources\Audiences;
 use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
@@ -246,6 +247,7 @@ final class ClientTest extends TestCase
             'analytics' => Analytics::class,
             'flows' => Flows::class,
             'workspace' => Workspace::class,
+            'attachments' => Attachments::class,
         ];
         $actual = [];
         foreach ((new \ReflectionClass($client))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {

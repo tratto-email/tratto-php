@@ -235,4 +235,11 @@ final class WebhookTest extends TestCase
             ini_set('zend.exception_ignore_args', (string) $previous);
         }
     }
+
+    /** Same list, same order as EVENT_TYPES in tratto-api routes/v1/webhooks.ts. */
+    #[Test]
+    public function listsTheEventTypesOfTheApiFailedIncluded(): void
+    {
+        self::assertSame(['sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed', 'failed'], Webhook::EVENT_TYPES);
+    }
 }

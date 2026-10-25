@@ -213,4 +213,40 @@ final class EmailsTest extends TestCase
         self::assertSame('GET', $this->fake->last()['method']);
         self::assertSame('https://api.tratto.email/v1/emails/em%201/events', $this->fake->last()['url']);
     }
+
+    #[Test]
+    public function sendAndSendBatchPassAttachmentsById(): void
+    {
+        $this->client->emails->send(['to' => 'b@y.it', 'attachments' => [['id' => 'att_1']]]);
+        self::assertSame('{"to":"b@y.it","attachments":[{"id":"att_1"}]}', $this->fake->last()['body']);
+
+        $this->client->emails->sendBatch([['to' => 'a@x.it', 'attachments' => [['id' => 'att_1']]]]);
+        self::assertSame('{"emails":[{"to":"a@x.it","attachments":[{"id":"att_1"}]}]}', $this->fake->last()['body']);
+    }
+
+    #[Test]
+    public function sendSurfacesPlanUpgradeRequired(): void
+    {
+        $this->fake->queue(403, ['error' => ['code' => 'PLAN_UPGRADE_REQUIRED', 'message' => 'Starter plan']]);
+        try {
+            $this->client->emails->send(['to' => 'b@y.it', 'attachments' => [['id' => 'att_1']]]);
+            self::fail('expected TrattoException');
+        } catch (TrattoException $e) {
+            self::assertSame(403, $e->statusCode);
+            self::assertSame('PLAN_UPGRADE_REQUIRED', $e->errorCode);
+        }
+    }
+
+    #[Test]
+    public function getReturnsAttachmentsAndFailureReason(): void
+    {
+        $data = [
+            'id' => 'email_1', 'status' => 'failed', 'failureReason' => 'attachment_unavailable',
+            'attachments' => [['id' => 'att_1', 'filename' => 'a.pdf', 'contentType' => 'application/pdf', 'size' => 3]],
+            'events' => [],
+        ];
+        $this->fake->queue(200, ['data' => $data]);
+
+        self::assertSame($data, $this->client->emails->get('email_1'));
+    }
 }

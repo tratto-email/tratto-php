@@ -4,6 +4,23 @@ All notable changes to `tratto/email` are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `attachments->upload($content, $filename, $contentType)`, `attachments->get($id)` and
+  `attachments->delete($id)` (`/v1/attachments`). `$content` is a string or a readable stream; it is sent as
+  the raw body with the given content type, never JSON-encoded. Non-ASCII filenames are sent as
+  `filename*=UTF-8''...` (RFC 6266, RFC 5987) with an ASCII fallback.
+- `emails->send()` and `emails->sendBatch()` document `attachments` (`[['id' => 'att_...']]`), now accepted
+  by the API in a batch too. `emails->get()` returns `attachments` and, on a failed email, `failureReason`.
+- `Tratto\Webhook::EVENT_TYPES`, which includes `failed`; its `data` is `{reason, error}`.
+
+### Changed
+
+- The `Content-Type` of a request is checked for CR, LF and NUL like the other headers, since the attachment
+  upload takes it from the caller.
+
 ## [1.1.0] - 2026-10-20
 
 ### Added

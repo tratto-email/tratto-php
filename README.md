@@ -123,10 +123,13 @@ $events = $tratto->emails->listEvents('email_abc123');
 
 `emails->send` and `emails->sendBatch` take an idempotency key. A key containing a line break is rejected before sending.
 
+A failed email carries `failureReason` (for example `template_not_found` or `attachment_unavailable`), the same
+code as `data.reason` of the `failed` webhook event. The set is open: handle unknown values.
+
 #### Batch
 
 `emails->sendBatch()` sends 1 to 100 emails in one request (requires API 0.22.0). Each email takes the
-fields of `send()` except `scheduledAt` and `attachments`: the API rejects the batch with a 422 whose
+fields of `send()` except `scheduledAt`: the API rejects the batch with a 422 whose
 `details` name the email, for example `/emails/3/to`. One idempotency key covers the whole batch.
 
 ```php
@@ -157,6 +160,32 @@ if ($failed !== []) {
 ```
 
 After a 503 or a 500 nothing was sent and the key is released: retry the same batch with the same key.
+
+### Attachments
+
+Requires `tratto/email` 1.2.0 or later, and a paid plan (the Free plan answers 403 `PLAN_UPGRADE_REQUIRED`).
+Upload the file first, then reference it by id from `emails->send()` or `emails->sendBatch()`. A full
+workspace storage answers 429 `QUOTA_EXCEEDED`: delete attachments you no longer need.
+
+```php
+$file = $tratto->attachments->upload(file_get_contents('invoice.pdf'), 'invoice.pdf', 'application/pdf');
+// or a stream, read from its current position: fopen('invoice.pdf', 'rb')
+
+$tratto->emails->send([
+    'from' => 'billing@mail.acme.com',
+    'to' => ['alice@example.com'],
+    'subject' => 'Your invoice',
+    'html' => '<p>Attached.</p>',
+    'attachments' => [['id' => $file['id']]],
+]);
+
+$meta = $tratto->attachments->get($file['id']); // metadata only, never the bytes
+$tratto->attachments->delete($file['id']);
+```
+
+The bytes are sent as they are with the content type you give, never JSON-encoded. Non-ASCII filenames are
+supported. Live attachments expire (`expiresAt`); an email queued with an attachment that was deleted or
+expired fails with `failureReason` `attachment_unavailable`.
 
 ### Contacts
 
@@ -239,6 +268,10 @@ $tratto->webhooks->test($webhook['id']);
 $rotated = $tratto->webhooks->rotateSecret($webhook['id']);
 $tratto->webhooks->delete($webhook['id']);
 ```
+
+The `failed` event (an email that was not sent) is delivered only to webhooks that list it in `events`. Its
+`data` is `['reason' => ..., 'error' => ...]`; `reason` is the same code as `failureReason` on
+`emails->get()`. `Tratto\Webhook::EVENT_TYPES` lists every event type.
 
 ### Domains
 
