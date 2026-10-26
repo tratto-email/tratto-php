@@ -7,7 +7,8 @@ namespace Tratto\Resources;
 final class Emails extends Resource
 {
     /**
-     * @param array<string, mixed> $params from, to, subject, html|markdown|text, ...
+     * @param array<string, mixed> $params from, to, subject, html|markdown|text, ...,
+     *                                     attachments: list<array{id: string}> (ids from attachments->upload())
      *
      * @return array<mixed> {id}
      */
@@ -20,7 +21,7 @@ final class Emails extends Resource
 
     /**
      * Sends 1 to 100 emails in one request (requires API 0.22.0). Each element takes the fields of send()
-     * except scheduledAt and attachments (the API answers 422). One idempotency key covers the whole batch.
+     * except scheduledAt (the API answers 422). One idempotency key covers the whole batch.
      *
      * A 202 with failed > 0 is returned, not thrown: resend only the failed emails, in a new batch with a new key.
      *
@@ -46,7 +47,11 @@ final class Emails extends Resource
         return $this->request('GET', '/v1/emails' . self::query($params)) ?? [];
     }
 
-    /** @return array<mixed> */
+    /**
+     * @return array<mixed> the email with its events; a failed email carries failureReason (an open set, the same
+     *                      code as data.reason of the failed webhook event), an email sent with files carries
+     *                      attachments: list<{id, filename, contentType, size}>
+     */
     public function get(string $id): array
     {
         return $this->requestData('GET', '/v1/emails/' . self::id($id));

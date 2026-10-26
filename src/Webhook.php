@@ -9,9 +9,19 @@ namespace Tratto;
  *
  * Header: "t=<unix ms>,v1=<hex>" (v1 may repeat during a secret rotation).
  * Signature: HMAC-SHA256 of "{t}.{raw body}" keyed with the whole secret, "whsec_" prefix included.
+ *
+ * The data of a "failed" event is FailedEventData; reason is the same code as failureReason on emails->get().
+ *
+ * @phpstan-type FailedEventData array{reason: string, error: string}
  */
 final class Webhook
 {
+    /**
+     * Event types a webhook can subscribe to (webhooks->create(['events' => ...])). "failed" (the email was not
+     * sent, data {reason, error}) is delivered only to webhooks that list it.
+     */
+    public const EVENT_TYPES = ['sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed', 'failed'];
+
     public const DEFAULT_TOLERANCE_SECONDS = 300;
 
     /**

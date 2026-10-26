@@ -8,6 +8,7 @@ use Tratto\Http\CurlTransport;
 use Tratto\Http\HttpClient;
 use Tratto\Http\Transport;
 use Tratto\Resources\Analytics;
+use Tratto\Resources\Attachments;
 use Tratto\Resources\Audiences;
 use Tratto\Resources\Campaigns;
 use Tratto\Resources\Contacts;
@@ -20,7 +21,7 @@ use Tratto\Resources\Workspace;
 
 final class Client
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
     public const DEFAULT_BASE_URL = 'https://api.tratto.email';
     public const DEFAULT_TIMEOUT = 30.0;
 
@@ -34,6 +35,7 @@ final class Client
     public readonly Analytics $analytics;
     public readonly Flows $flows;
     public readonly Workspace $workspace;
+    public readonly Attachments $attachments;
 
     /**
      * @param array{baseUrl?: string, timeout?: int|float, transport?: Transport} $options
@@ -76,5 +78,6 @@ final class Client
         $this->analytics = new Analytics($http);
         $this->flows = new Flows($http);
         $this->workspace = new Workspace($http);
+        $this->attachments = new Attachments($http);
     }
 }

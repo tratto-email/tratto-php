@@ -50,6 +50,8 @@ final class IdEncodingTest extends ResourceTestCase
         yield 'flows.delete' => [static fn(Client $c, string $id) => $c->flows->delete($id), 'DELETE', '/v1/flows/{id}'];
         yield 'flows.activate' => [static fn(Client $c, string $id) => $c->flows->activate($id), 'POST', '/v1/flows/{id}/activate'];
         yield 'flows.deactivate' => [static fn(Client $c, string $id) => $c->flows->deactivate($id), 'POST', '/v1/flows/{id}/deactivate'];
+        yield 'attachments.get' => [static fn(Client $c, string $id) => $c->attachments->get($id), 'GET', '/v1/attachments/{id}'];
+        yield 'attachments.delete' => [static fn(Client $c, string $id) => $c->attachments->delete($id), 'DELETE', '/v1/attachments/{id}'];
         yield 'templates.testSend' => [static fn(Client $c, string $id) => $c->templates->testSend($id, 'a@b.it'), 'POST', '/v1/templates/{id}/test-send'];
     }
 

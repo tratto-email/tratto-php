@@ -42,7 +42,8 @@ final class HttpClient
         string $contentType = 'application/json',
         bool $unwrap = false,
     ): ?array {
-        foreach ($headers as $name => $value) {
+        // Content-Type included: the attachment upload takes it from the caller.
+        foreach (['Content-Type' => $contentType] + $headers as $name => $value) {
             if (preg_match('/[\r\n\0]/', $name . $value) === 1) {
                 // the value is not echoed: it may come from user input
                 throw new TrattoException(sprintf('Header "%s" contains CR, LF or NUL', addcslashes($name, "\0..\37")), 'invalid_header', 0);
