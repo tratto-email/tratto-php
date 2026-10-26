@@ -21,7 +21,7 @@ use Tratto\Resources\Workspace;
 
 final class Client
 {
-    public const VERSION = '1.1.0';
+    public const VERSION = '1.2.0';
     public const DEFAULT_BASE_URL = 'https://api.tratto.email';
     public const DEFAULT_TIMEOUT = 30.0;
 
